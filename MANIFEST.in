@@ -1,0 +1,5 @@
+include scrubbyex.py
+include scrub.py
+include setup.py
+include README.txt
+include test_scrubby.py
