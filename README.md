@@ -159,7 +159,7 @@ asymmetric partnerships for cases like these:
   |--------------------------| (symmetric)
   v                +---------v (asymmetric)
   <html><head> ... <body> ...</html>
-                   +---------^ (asymmetric)
+        +----------^           (asymmetric)
 ```
 
 In other words, the `<head>` tag is given the `<body>` tag as a partner, and
