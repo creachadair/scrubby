@@ -19,10 +19,11 @@ try:
 except ImportError:
     import urllib
 
-# {{ Utility functions 
+# {{ Utility functions
 
 # These are some utility functions that are used by the examples further along
 # in this file.
+
 
 def load_url(url):
     """Load the document at the specified URL."""
@@ -32,10 +33,12 @@ def load_url(url):
     finally:
         u.close()
 
+
 def untabify(text, width):
     """Replace tabs with spaces in text."""
     def next_stop(p):
         return width * ((p + width) // width)
+
     def pad(p):
         return ' ' * (next_stop(p) - p)
 
@@ -52,7 +55,8 @@ def untabify(text, width):
 
     return ''.join(out)
 
-def format_snippet(obj, prefix = '', span = False, **opts):
+
+def format_snippet(obj, prefix='', span=False, **opts):
     """Print a descriptive snippet for the given object."""
     width = opts.get('width', 0)
     tsize = opts.get('tabsize', 8)
@@ -72,20 +76,22 @@ def format_snippet(obj, prefix = '', span = False, **opts):
     mark = prefix + lead
     return (prefix + line + '\n' + mark)
 
+
 # }}
 
 # This variable is global so that you can inspect the guts of the parser after
 # one of the demo functions has set it up.
 parser = None
 
-# {{ report_missing_alts(url) 
+# {{ report_missing_alts(url)
+
 
 #<>
 def report_missing_alts(url):
     """<> Generate a report of the image tags that lack an ALT attribute in an
     HTML document.
     """
-    print ("report_missing_alts(%r)" % url)
+    print("report_missing_alts(%r)" % url)
 
     global parser
 
@@ -114,30 +120,30 @@ def report_missing_alts(url):
     # is undefined.  Each individual attribute condition must hold for the
     # attr to succeed.
 
-    for img in parser.find(name = 'img',
-                           attr = {'src': True, 'alt': False}):
+    for img in parser.find(name='img', attr={'src': True, 'alt': False}):
 
         # Every object returned by the parser has a .linepos attribute.  When
         # read, this computes the 1-based line and column offsets of the
         # starting position of the object.
         ln, cn = img.linepos
 
-        print ("Missing ALT on IMG at %(line_num)s, column %(col_num)s:\n"
-               "\t%(tag)s" % dict(line_num = ln, col_num = cn,
-                                  tag = img.source))
+        print("Missing ALT on IMG at %(line_num)s, column %(col_num)s:\n"
+              "\t%(tag)s" % dict(line_num=ln, col_num=cn, tag=img.source))
 
-    print ("<done>")
+    print("<done>")
+
 
 # }}
 
-# {{ report_unclosed_paras(url) 
+# {{ report_unclosed_paras(url)
+
 
 #<>
 def report_unclosed_paras(url):
     """<> Generate a report of any <p> tags that are not balanced by a
     corresponding </p> in an HTML document.
     """
-    print ("report_unclosed_paras(%r)" % url)
+    print("report_unclosed_paras(%r)" % url)
 
     global parser
     parser = scrubby.html_parser(load_url(url).decode('utf8'))
@@ -153,19 +159,19 @@ def report_unclosed_paras(url):
 
     # Predictably, close tags have a type of "close", and self-tags have a type
     # of "self".
-    
-    for p in parser.find(name = 'p', type = 'open'):
-        ln, cn = p.linepos # see report_missing_alts(...)
+
+    for p in parser.find(name='p', type='open'):
+        ln, cn = p.linepos  # see report_missing_alts(...)
 
         # Each tag may potentially have a "partner", accessed via its
         # .partner attribute, which defines its scope within the source.
         # The parser attempts to match end tags with start tags, and
-        # assign each tag a partner.  
-        
+        # assign each tag a partner.
+
         if p.partner is None:
-            print ("Mismatched <P> tag "
-                   "at line %(line_num)s, column %(col_num)s" %
-                   dict(line_num = ln, col_num = cn))
+            print("Mismatched <P> tag "
+                  "at line %(line_num)s, column %(col_num)s" %
+                  dict(line_num=ln, col_num=cn))
 
         # Of course, it's possible that no matching tag will be found.
         # When that happens, the parser tries a few simple rules to
@@ -173,22 +179,27 @@ def report_unclosed_paras(url):
         # start tag should be an end tag with the same name; if it's not,
         # we're seeing an example of the parser's ad-hoc rules in action.
 
-        elif (p.partner.type != 'close' or
-              p.partner.name.lower() != 'p'):
+        elif (p.partner.type != 'close' or p.partner.name.lower() != 'p'):
 
             pln, pcn = p.partner.linepos
 
-            print ("Mismatched <P> tag at line %(line_num)s, column %(col_num)s\n"
-                   " implicitly closed by %(closer)s"
-                   " at line %(partner_line_num)s, column %(partner_col_num)s" %
-                   dict(line_num = ln, col_num = cn, partner_line_num = pln,
-                        partner_col_num = pcn, closer = p.partner.source))
+            print(
+                "Mismatched <P> tag at line %(line_num)s, column %(col_num)s\n"
+                " implicitly closed by %(closer)s"
+                " at line %(partner_line_num)s, column %(partner_col_num)s" %
+                dict(line_num=ln,
+                     col_num=cn,
+                     partner_line_num=pln,
+                     partner_col_num=pcn,
+                     closer=p.partner.source))
 
-    print ("<done>")
+    print("<done>")
+
 
 # }}
 
-# {{ report_explicit_styles(url) 
+# {{ report_explicit_styles(url)
+
 
 def report_explicit_styles(url):
     """<> Generate a report of any non-SPAN tags that have a non-empty explicit
@@ -214,25 +225,29 @@ def report_explicit_styles(url):
     #
     # Note that the name of a comparison key, such as "name", can be prefixed
     # with "not_" to invert the sense of the comparison.
-    
-    for p in parser.find(type = ('open', 'self'),
-                         attr = ('style', is_nonempty),
-                         not_name = 'span'):
-        ln, cn = p.linepos # see report_missing_alts(...)
 
-        print ("Tag <%(name)s> has an explicit style "
-               "at line %(line_num)s, column %(col_num)s\n"
-               "%(style)s" % dict(
-                   line_num = ln, col_num = cn, name = p.name,
-                   style = format_snippet(p['style'], prefix = '| ',
-                                          span = True, width = 80,
-                                          tabsize = 8)))
+    for p in parser.find(type=('open', 'self'),
+                         attr=('style', is_nonempty),
+                         not_name='span'):
+        ln, cn = p.linepos  # see report_missing_alts(...)
 
-    print ("<done>")
+        print(
+            "Tag <%(name)s> has an explicit style "
+            "at line %(line_num)s, column %(col_num)s\n"
+            "%(style)s" %
+            dict(line_num=ln,
+                 col_num=cn,
+                 name=p.name,
+                 style=format_snippet(
+                     p['style'], prefix='| ', span=True, width=80, tabsize=8)))
+
+    print("<done>")
+
 
 # }}
 
-# {{ fetch_latest_comic() 
+# {{ fetch_latest_comic()
+
 
 def fetch_latest_comic():
     """<> Demonstrates some simple screen scraping techniques, by downloading
@@ -240,12 +255,12 @@ def fetch_latest_comic():
 
     Check out LFG at <http://www.lfgcomic.com/>.
     """
-    print ("fetch_latest_comic()")
+    print("fetch_latest_comic()")
 
     global parser
 
     url = 'http://www.lfgcomic.com/page/latest'
-    print ("Loading: <%s>" % url)
+    print("Loading: <%s>" % url)
     parser = scrubby.html_parser(load_url(url).decode('utf8'))
 
     # The <img> tag containing the comic is the first image found
@@ -256,7 +271,7 @@ def fetch_latest_comic():
     #
     # The .first(...) method is like .find(...), but returns only the
     # first matching object, rather than a generator for all of them.
-    cdiv = parser.first(name = 'div', attr = ('id', 'comic'))
+    cdiv = parser.first(name='div', attr=('id', 'comic'))
 
     # Now, we'll search "inside" that tag for the first <img>.  The
     # contents of a tag are defined as all those objects between the
@@ -265,7 +280,7 @@ def fetch_latest_comic():
     # parser's .first() and .find() methods, which supply the
     # search_inside keyword argument in addition to whatever else you
     # provide.
-    image = cdiv.first(name = 'img')
+    image = cdiv.first(name='img')
 
     # Now we can just extract the source and grab the image.  Start
     # and self tags behave like dictionaries with respect to their
@@ -276,16 +291,17 @@ def fetch_latest_comic():
     # source file.
     src = image['src'].value
 
-    print ("Loading: <%s>" % src)
+    print("Loading: <%s>" % src)
     image_data = load_url(src)
 
     file_name = os.path.basename(src)
 
-    print ("Saving: %s" % file_name)
+    print("Saving: %s" % file_name)
     with open(file_name, 'wb') as fp:
         fp.write(image_data)
 
-    print ("<done>")
+    print("<done>")
+
 
 # }}
 

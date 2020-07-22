@@ -42,35 +42,45 @@ __version__ = "1.039"
 
 import collections, functools, re, sys
 
-# {{ Compatibility definitions 
+# {{ Compatibility definitions
 
 if sys.version_info[0] < 3:
+
     def is_string(obj):
         return isinstance(obj, basestring)
+
     to_char = unichr
     import htmlentitydefs as html_entities
 else:
+
     def is_string(obj):
         return isinstance(obj, str)
+
     to_char = chr
     import html.entities as html_entities
+
 
 def is_callable(obj):
     return isinstance(obj, collections.Callable)
 
-# }}
-
-# {{ Exception classes 
-
-class parse_error (Exception):
-    pass
-
-class parse_failed (parse_error):
-    pass
 
 # }}
 
-# {{ @bounded(meth) 
+# {{ Exception classes
+
+
+class parse_error(Exception):
+    pass
+
+
+class parse_failed(parse_error):
+    pass
+
+
+# }}
+
+# {{ @bounded(meth)
+
 
 def bounded(meth):
     """Convert a scanner method taking a starting position and
@@ -86,13 +96,16 @@ def bounded(meth):
 
     return functools.update_wrapper(wrapper, meth)
 
+
 # }}
 
-# {{ @cached(meth) 
+# {{ @cached(meth)
+
 
 def cached(meth):
     """Wrap a method to cache its results."""
     cname = '_' + meth.__name__ + '_cache_'
+
     def wrapper(self, *args, **kw):
         if not hasattr(self, cname):
             setattr(self, cname, meth(self, *args, **kw))
@@ -100,9 +113,11 @@ def cached(meth):
 
     return functools.update_wrapper(wrapper, meth)
 
+
 # }}
 
-# {{ @unescape(meth) 
+# {{ @unescape(meth)
+
 
 def unescape(meth):
     """Wrap a method yielding a string that may contain escaped
@@ -116,26 +131,34 @@ def unescape(meth):
 
     return functools.update_wrapper(wrapper, meth)
 
+
 # }}
 
-# {{ replace_entities(emap, value) 
+# {{ replace_entities(emap, value)
+
 
 def replace_entities(emap, value):
     def rep1(m):
-        key = m.group('key'); val = m.group(0)
+        key = m.group('key')
+        val = m.group(0)
         if key.startswith('#'):
-            try: val = to_char(int(key[1:]))
-            except ValueError: pass
+            try:
+                val = to_char(int(key[1:]))
+            except ValueError:
+                pass
         else:
             val = emap.get(key, val)
         return val
+
     return re.sub(r'&(?P<key>#?\w+);', rep1, value)
+
 
 # }}
 
-# {{ class markup_scanner 
+# {{ class markup_scanner
 
-class markup_scanner (object):
+
+class markup_scanner(object):
     """Implements a permissive lexical analyzer for HTML and
     other similar markup languages.
 
@@ -186,7 +209,7 @@ class markup_scanner (object):
             raise TypeError("input must be a string")
         self.input = src
 
-    def scan(self, start_pos = 0, **opts):
+    def scan(self, start_pos=0, **opts):
         """Returns a generator that yields each token found in the input,
         starting at the specified starting offset.  Thread-safe.
 
@@ -220,7 +243,7 @@ class markup_scanner (object):
     # The @bounded decorator can help you keep track of this.
 
     def get_char(self, p):
-        return self.input[p : p + 1]
+        return self.input[p:p + 1]
 
     @bounded
     def scan_string(self, p):
@@ -233,23 +256,21 @@ class markup_scanner (object):
         if p < len(t):
             return 'str', p + 1
         else:
-            return 'ustr', p # Unterminated string
+            return 'ustr', p  # Unterminated string
 
     @bounded
-    def scan_name(self, p, end_marks = ''):
+    def scan_name(self, p, end_marks=''):
         ig, u, v = self.scan_unquoted(p, '</=' + end_marks)
         return 'name', v
 
     @bounded
-    def scan_unquoted(self, p, end_marks = '', allow_blank = False):
-        s = p ; ends = '\x00"\'>' + end_marks
+    def scan_unquoted(self, p, end_marks='', allow_blank=False):
+        s = p
+        ends = '\x00"\'>' + end_marks
 
         while True:
             c = self.get_char(p)
-            if (not c or
-                c in ends or
-                c.isspace() or
-                ord(c) < 32):
+            if (not c or c in ends or c.isspace() or ord(c) < 32):
                 break
             p += 1
 
@@ -263,7 +284,7 @@ class markup_scanner (object):
             p += 1
 
         return 'ws', p
-    
+
     @bounded
     def scan_literal(self, p, value):
         end = p + len(value)
@@ -312,9 +333,7 @@ class markup_scanner (object):
         except parse_failed:
             pass
 
-        return 'attr', p, ve, dict(
-            name = (ns, ne),
-            value = (vtag, vs, ve))
+        return 'attr', p, ve, dict(name=(ns, ne), value=(vtag, vs, ve))
 
     def parse_attribs(self, p, **opts):
         data = []
@@ -341,9 +360,8 @@ class markup_scanner (object):
         if self.get_char(atte) != '>':
             raise parse_failed("parse_starttag", p)
 
-        return kind, p, atte + 1, dict(
-            name = (ns, ne),
-            attribs = (atts, atte, data))
+        return kind, p, atte + 1, dict(name=(ns, ne),
+                                       attribs=(atts, atte, data))
 
     def parse_endtag(self, p, **opts):
         ig, u, v = self.scan_literal(p, '</')
@@ -353,22 +371,21 @@ class markup_scanner (object):
         if self.get_char(v) != '>':
             raise parse_failed("parse_endtag", p)
 
-        return 'close', p, v + 1, dict(
-            name = (ns, ne),
-            attribs = (ne, v, []))
+        return 'close', p, v + 1, dict(name=(ns, ne), attribs=(ne, v, []))
 
     def parse_comment(self, p, **opts):
         tag, ns, ne = self.scan_comment(p)
         cs = p + len('<!--')
         ce = ne if tag == 'ucom' else ne - len('-->')
 
-        return tag, ns, ne, dict(content = (cs, ce))
+        return tag, ns, ne, dict(content=(cs, ce))
 
     def parse_cdata(self, p, **opts):
         ig, ns, ne = self.scan_literal(p, '<![CDATA[')
 
         t = self.input
-        c = ne ; kind = 'udata'
+        c = ne
+        kind = 'udata'
         while not t.startswith(']]>', c):
             if c >= len(t): break
             c += 1
@@ -376,14 +393,15 @@ class markup_scanner (object):
             kind = 'cdata'
 
         end = c + len(']]>') if kind == 'cdata' else c
-        return kind, p, end, dict(content = (ne, c))
+        return kind, p, end, dict(content=(ne, c))
 
     def parse_directive(self, p, end_mark, **opts):
         # p + 2 to skip past <! or <?
         ig, ns, ne = self.scan_name(p + 2, '?' if '?' in end_mark else '')
 
         t = self.input
-        c = ne ; kind = 'udir'
+        c = ne
+        kind = 'udir'
         while not t.startswith(end_mark, c):
             if self.get_char(c) in ('', '<'): break
             c += 1
@@ -392,9 +410,7 @@ class markup_scanner (object):
 
         end = c + len(end_mark) if kind == 'dir' else c
 
-        return kind, p, end, dict(
-            name = (ns, ne),
-            content = (ns, c))
+        return kind, p, end, dict(name=(ns, ne), content=(ns, c))
 
     def find_entities(self, p, end):
         data = []
@@ -425,10 +441,12 @@ class markup_scanner (object):
                 if np == '!':
                     try:
                         return self.parse_comment(p)
-                    except parse_failed: pass
+                    except parse_failed:
+                        pass
                     try:
                         return self.parse_cdata(p)
-                    except parse_failed: pass
+                    except parse_failed:
+                        pass
                     return self.parse_directive(p, '>', **opts)
                 elif np == '?':
                     return self.parse_directive(p, '?>', **opts)
@@ -437,7 +455,7 @@ class markup_scanner (object):
                 else:
                     return self.parse_starttag(p, **opts)
             except parse_failed:
-                c += 1 # skip past an unconsumed "<"
+                c += 1  # skip past an unconsumed "<"
 
         # Falling through to here means we're in text data
         while c < len(t) and t[c] != '<':
@@ -445,11 +463,13 @@ class markup_scanner (object):
 
         return 'text', p, c, self.find_entities(p, c)
 
+
 # }}
 
-# {{ class named_object 
+# {{ class named_object
 
-class named_object (object):
+
+class named_object(object):
     """A mixin for objects with names that adds .name, .name_start, and
     .name_end properties.
 
@@ -473,11 +493,13 @@ class named_object (object):
     def name_end(self):
         return self.get_object_data()['name'][1]
 
+
 # }}
 
-# {{ class markup_object 
+# {{ class markup_object
 
-class markup_object (object):
+
+class markup_object(object):
     """Represents a markup object such as a tag, a comment, or a run of text
     discovered by the markup parser.
 
@@ -533,10 +555,9 @@ class markup_object (object):
         return '|'
 
     def __repr__(self):
-        return '#<%s type=%r %s %d..%d>' % (
-            type(self).__name__,
-            self.type, self.__reprtag__(),
-            self.start, self.end)
+        return '#<%s type=%r %s %d..%d>' % (type(self).__name__, self.type,
+                                            self.__reprtag__(), self.start,
+                                            self.end)
 
     def __str__(self):
         return self.source
@@ -548,8 +569,10 @@ class markup_object (object):
         for key in keys:
             tk = '_' + key + '_cache_'
             if getattr(self, tk, None) is None:
-                try: delattr(self, tk)
-                except AttributeError: pass
+                try:
+                    delattr(self, tk)
+                except AttributeError:
+                    pass
 
     @property
     def type(self):
@@ -580,7 +603,7 @@ class markup_object (object):
                 lo, hi = p.end, self.start
             return self.parser.get_substring(lo, hi)
         else:
-            return '' # default, no content
+            return ''  # default, no content
 
     @property
     def next_obj(self):
@@ -617,20 +640,16 @@ class markup_object (object):
         while pre >= 0 or post < len(self.parser):
             if pre >= 0:
                 t = self.parser.get_wrapper(pre)
-                if (t.type == 'open' and
-                    t.contains(self) and
-                    (self.partner is None or
-                     t.contains(self.partner))):
+                if (t.type == 'open' and t.contains(self) and
+                    (self.partner is None or t.contains(self.partner))):
                     return t
                 pre -= 1
             else:
                 break
             if post < len(self.parser):
                 t = self.parser.get_wrapper(post)
-                if (t.type == 'close' and
-                    t.contains(self) and
-                    (self.partner is None or
-                     t.contains(self.partner))):
+                if (t.type == 'close' and t.contains(self) and
+                    (self.partner is None or t.contains(self.partner))):
                     return t.partner
                 post += 1
 
@@ -639,16 +658,14 @@ class markup_object (object):
     @property
     def siblings(self):
         if self.parent is None:
-            return list(s for s in self.parser.wrappers
-                        if s.parent is None)
+            return list(s for s in self.parser.wrappers if s.parent is None)
         else:
             return self.parent.children
 
     @property
     def first_sib(self):
         if self.parent is None:
-            return next(s for s in self.parser.wrappers
-                        if s.parent is None)
+            return next(s for s in self.parser.wrappers if s.parent is None)
         else:
             return self.parent.first_child
 
@@ -695,16 +712,16 @@ class markup_object (object):
         if p is not None:
             lo = min(self.obj_id, p.obj_id)
             hi = max(self.obj_id, p.obj_id)
-            return list(self.parser.get_wrapper(id)
-                        for id in range(lo + 1, hi))
+            return list(
+                self.parser.get_wrapper(id) for id in range(lo + 1, hi))
 
-        return [] # default, no contents
+        return []  # default, no contents
 
     def contains(self, other):
         """As other in self.contents, but doesn't create a list."""
         p = self.partner
         if p is not None:
-            left =  self.parser.get_wrapper(min(self.obj_id, p.obj_id))
+            left = self.parser.get_wrapper(min(self.obj_id, p.obj_id))
             right = self.parser.get_wrapper(max(self.obj_id, p.obj_id))
 
             return left.end <= other.start and other.end <= right.start
@@ -713,8 +730,7 @@ class markup_object (object):
 
     @property
     def children(self):
-        return list(obj for obj in self.contents
-                    if obj.parent is self)
+        return list(obj for obj in self.contents if obj.parent is self)
 
     @property
     def first_child(self):
@@ -752,41 +768,43 @@ class markup_object (object):
         """As markup_parser.find(...) but considering only the contents of the
         object, if any.
         """
-        return self.parser.find(search_inside = self, **opts)
+        return self.parser.find(search_inside=self, **opts)
 
     def find_after(self, **opts):
         """As markup_parser.find(...) but considering only objects after this
         object, if any.
         """
-        return self.parser.find(search_after = self, **opts)
+        return self.parser.find(search_after=self, **opts)
 
     def first(self, **opts):
         """As markup_parser.first(...) but considering only the contents of
         this tag, if any.
         """
-        return self.parser.first(search_inside = self, **opts)
+        return self.parser.first(search_inside=self, **opts)
 
     def first_after(self, **opts):
         """As markup_parser.first(...) but considering only objects after this
         object, if any.
         """
-        return self.parser.first(search_after = self, **opts)
+        return self.parser.first(search_after=self, **opts)
 
     def last(self, **opts):
         """As markup_parser.last(..) but considering only the contents of this
         tag, if any.
         """
-        return self.parser.last(search_inside = self, **opts)
+        return self.parser.last(search_inside=self, **opts)
 
     def get_object_data(self):
         obj = self.parser.get_object(self.obj_id)
         return obj[3]
 
+
 # }}
 
-# {{ class markup_comment 
+# {{ class markup_comment
 
-class markup_comment (markup_object):
+
+class markup_comment(markup_object):
     """Represents an SGML or XML style comment or markup directive.
 
     Key attributes (in addition to those of markup_object):
@@ -807,18 +825,22 @@ class markup_comment (markup_object):
     def inner_end(self):
         return self.get_object_data()['content'][1]
 
+
 # }}
 
-# {{ class markup_directive 
+# {{ class markup_directive
 
-class markup_directive (named_object, markup_comment):
+
+class markup_directive(named_object, markup_comment):
     """Represents an SGML or XML style processing directive."""
 
+
 # }}
 
-# {{ class markup_tag 
+# {{ class markup_tag
 
-class markup_tag (named_object, markup_object):
+
+class markup_tag(named_object, markup_object):
     """Represents a start tag or self-contained tag, which may have attributes
     associated with it.
 
@@ -839,9 +861,9 @@ class markup_tag (named_object, markup_object):
     def attributes(self):
         data = self.get_object_data()
         u, v, elts = data['attribs']
-        return list(markup_attribute(self.parser,
-                                     self.obj_id, p)
-                    for p in range(len(elts)))
+        return list(
+            markup_attribute(self.parser, self.obj_id, p)
+            for p in range(len(elts)))
 
     @property
     def innersource(self):
@@ -888,11 +910,13 @@ class markup_tag (named_object, markup_object):
                 return default[0]
             raise
 
+
 # }}
 
-# {{ class markup_text 
+# {{ class markup_text
 
-class markup_text (markup_object):
+
+class markup_text(markup_object):
     """Defines a run of text found in the markup.
 
     Key attributes (in addition to those of markup_object):
@@ -906,9 +930,10 @@ class markup_text (markup_object):
     @cached
     def entities(self):
         data = self.get_object_data()
-        return [markup_entity(self.parser,
-                              self.obj_id, p)
-                for p in range(len(data))]
+        return [
+            markup_entity(self.parser, self.obj_id, p)
+            for p in range(len(data))
+        ]
 
     @property
     @cached
@@ -919,11 +944,13 @@ class markup_text (markup_object):
     def __getitem__(self, itm):
         return self.source[itm]
 
+
 # }}
 
-# {{ class markup_datum 
+# {{ class markup_datum
 
-class markup_datum (markup_object):
+
+class markup_datum(markup_object):
     """Base class for entities, attributes, and other data that hang
     from other markup objects.
 
@@ -931,10 +958,9 @@ class markup_datum (markup_object):
     .parent   -- the markup object that owns this datum (may be None).
     """
     def __repr__(self):
-        return '#<%s tag=%d %s %d..%d>' % (
-            type(self).__name__, self.obj_id,
-            self.__reprtag__(),
-            self.start, self.end)
+        return '#<%s tag=%d %s %d..%d>' % (type(self).__name__, self.obj_id,
+                                           self.__reprtag__(), self.start,
+                                           self.end)
 
     def __init__(self, parser, id, index):
         super(markup_datum, self).__init__(parser, id)
@@ -949,11 +975,13 @@ class markup_datum (markup_object):
         assert 0 <= self.obj_index < len(data)
         return data[self.obj_index]
 
+
 # }}
 
-# {{ class markup_entity 
+# {{ class markup_entity
 
-class markup_entity (markup_datum):
+
+class markup_entity(markup_datum):
     """Represents an escaped entity.
 
     Key attributes (in addition to those of markup_datum):
@@ -987,11 +1015,13 @@ class markup_entity (markup_datum):
     def siblings(self):
         return self.parent.entities
 
+
 # }}
 
-# {{ class markup_attribute 
+# {{ class markup_attribute
 
-class markup_attribute (markup_datum):
+
+class markup_attribute(markup_datum):
     """Represents an attribute defined on a start tag.
 
     Key attributes (in addition to those of markup_object):
@@ -1044,9 +1074,9 @@ class markup_attribute (markup_datum):
         kind, start, end = data['value']
         raw = self.parser.get_substring(start, end)
         if kind == 'str':
-            return raw[1:-1] # remove quotation marks
+            return raw[1:-1]  # remove quotation marks
         elif kind == 'ustr':
-            return raw[1:]   # remove left quotation mark
+            return raw[1:]  # remove left quotation mark
         else:
             return raw
 
@@ -1078,11 +1108,13 @@ class markup_attribute (markup_datum):
     def siblings(self):
         return self.parent.attributes
 
+
 # }}
 
-# {{ class markup_parser 
+# {{ class markup_parser
 
-class markup_parser (object):
+
+class markup_parser(object):
     """A tag-soup parser for HTML and other similar markup langauges.
     """
     # A set of tag names that should be considered singular by default, even if
@@ -1104,14 +1136,14 @@ class markup_parser (object):
     CLOSED_BY_EOF = set()
 
     # A map of entity names to values, used when reading attribute values.
-    ENTITY_NAME_MAP = dict(amp = '&', lt = '<', gt = '>', quot = '"')
+    ENTITY_NAME_MAP = dict(amp='&', lt='<', gt='>', quot='"')
 
     # Settings for .get_linepos().
-    LINE_NUM_BASE = 1    # Lines are numbered from this value.
+    LINE_NUM_BASE = 1  # Lines are numbered from this value.
     COLUMN_NUM_BASE = 0  # Columns are numbered from this value.
-    TAB_WIDTH = 8        # Tabs have this width in characters.
+    TAB_WIDTH = 8  # Tabs have this width in characters.
 
-    def __init__(self, src = None, **opts):
+    def __init__(self, src=None, **opts):
         """Initialize a new parser with the specified source text.  If the
         source is omitted, input may be given to the .parse() method.
         """
@@ -1136,9 +1168,9 @@ class markup_parser (object):
         self.input = src
         scanner = markup_scanner(src)
         if opts.get('skip_white_text', False):
-            self.objects = list(t for t in scanner.scan()
-                                if t[0] != 'text' or
-                                not src[t[1]:t[2]].isspace())
+            self.objects = list(
+                t for t in scanner.scan()
+                if t[0] != 'text' or not src[t[1]:t[2]].isspace())
         else:
             self.objects = list(scanner.scan())
         self.wrappers = self.make_wrappers()
@@ -1170,8 +1202,8 @@ class markup_parser (object):
 
             self.input += src
             scanner = markup_scanner(self.input)
-            self.objects.extend(scanner.scan(start_pos = sp))
-            self.wrappers.extend(self.make_wrappers(start_pos = op))
+            self.objects.extend(scanner.scan(start_pos=sp))
+            self.wrappers.extend(self.make_wrappers(start_pos=op))
             self.find_partners()
 
     def find(self, **opts):
@@ -1259,12 +1291,15 @@ class markup_parser (object):
         if is_callable(mapper):
             do_map = mapper
         elif is_string(mapper):
+
             def do_map(value):
                 return getattr(value, mapper, None)
         elif isinstance(mapper, (list, tuple, set)):
+
             def do_map(value):
                 return type(mapper)(getattr(value, t, None) for t in mapper)
         elif isinstance(mapper, dict):
+
             def do_map(value):
                 return type(mapper)(
                     (t, getattr(value, t, None)) for t in mapper)
@@ -1275,6 +1310,7 @@ class markup_parser (object):
             def w(value, exp):
                 if negate: return not f(value, exp)
                 else: return f(value, exp)
+
             return w
 
         def tsense(f):
@@ -1283,6 +1319,7 @@ class markup_parser (object):
                     return not f(candidate, test_name[4:], test_value)
                 else:
                     return f(candidate, test_name, test_value)
+
             return w
 
         @gsense
@@ -1299,7 +1336,7 @@ class markup_parser (object):
             elif exp in (None, True):
                 return True  # the attribute exists
             elif exp is False:
-                return False # no such attribute
+                return False  # no such attribute
 
             # If we get here, the only other allowable option is
             # for exp to be a collection of things to try.  If that
@@ -1313,21 +1350,22 @@ class markup_parser (object):
         all_tests = []
         # Order matters here...
 
-        for key in ('type', 'name', 'hasattr', 'hasattrs', 'attr',
-                    'source', 'csource', 'innersource', 'partner', 'parent',
-                    'predicate', 'value'):
+        for key in ('type', 'name', 'hasattr', 'hasattrs', 'attr', 'source',
+                    'csource', 'innersource', 'partner', 'parent', 'predicate',
+                    'value'):
             for k in (key, 'not_' + key):
                 if k in opts: all_tests.append((k, opts[k]))
 
         # Choose candidates to search
-        lo_limit = 0                   # Search no index before this.
+        lo_limit = 0  # Search no index before this.
         hi_limit = len(self.wrappers)  # Search no index at or after this.
         if 'search_after' in opts:
             lo_limit = opts['search_after'].obj_id + 1
         if 'search_before' in opts:
             hi_limit = opts['search_before'].obj_id
         if 'search_inside' in opts:
-            t = opts['search_inside'] ; p = t.partner
+            t = opts['search_inside']
+            p = t.partner
             if p is None:
                 lo_limit = hi_limit = t.obj_id
             else:
@@ -1341,15 +1379,15 @@ class markup_parser (object):
 
         @tsense
         def t_property(candidate, test_name, test_value):
-            return (hasattr(candidate, test_name) and
-                    do_match(getattr(candidate, test_name), test_value))
+            return (hasattr(candidate, test_name)
+                    and do_match(getattr(candidate, test_name), test_value))
 
         @tsense
         def t_associate(candidate, test_name, test_value):
-            return (hasattr(candidate, test_name) and
-                    test_value(getattr(candidate, test_name))
-                    if is_callable(test_value)
-                    else getattr(candidate, test_name) is test_value)
+            return (hasattr(candidate, test_name)
+                    and test_value(getattr(candidate, test_name))
+                    if is_callable(test_value) else
+                    getattr(candidate, test_name) is test_value)
 
         @tsense
         def t_has_attr(candidate, test_name, test_value):
@@ -1398,31 +1436,31 @@ class markup_parser (object):
             return False
 
         test_map = dict(
-            type            = t_property,
-            not_type        = t_property,
-            name            = t_property,
-            not_name        = t_property,
-            hasattr         = t_has_attr,
-            not_hasattr     = t_has_attr,
-            hasattrs        = t_has_attr,
-            not_hasattrs    = t_has_attr,
-            attr            = t_attr_match,
-            not_attr        = t_attr_match,
-            source          = t_property,
-            not_source      = t_property,
-            csource         = t_property,
-            not_csource     = t_property,
-            innersource     = t_property,
-            not_innersource = t_property,
-            value           = t_property,
-            not_value       = t_property,
-            parent          = t_associate,
-            not_parent      = t_associate,
-            partner         = t_associate,
-            not_partner     = t_associate,
-            predicate       = t_predicate,
-            not_predicate   = t_predicate,
-            )
+            type=t_property,
+            not_type=t_property,
+            name=t_property,
+            not_name=t_property,
+            hasattr=t_has_attr,
+            not_hasattr=t_has_attr,
+            hasattrs=t_has_attr,
+            not_hasattrs=t_has_attr,
+            attr=t_attr_match,
+            not_attr=t_attr_match,
+            source=t_property,
+            not_source=t_property,
+            csource=t_property,
+            not_csource=t_property,
+            innersource=t_property,
+            not_innersource=t_property,
+            value=t_property,
+            not_value=t_property,
+            parent=t_associate,
+            not_parent=t_associate,
+            partner=t_associate,
+            not_partner=t_associate,
+            predicate=t_predicate,
+            not_predicate=t_predicate,
+        )
         for candidate in candidates:
             ok = match_all
 
@@ -1453,7 +1491,8 @@ class markup_parser (object):
 
     def last(self, **opts):
         """As .first(...), but returns the last matching result."""
-        t = dict(opts); t['reverse'] = True
+        t = dict(opts)
+        t['reverse'] = True
         return self.first(**t)
 
     def locate(self, pos):
@@ -1604,7 +1643,7 @@ class markup_parser (object):
             pos += 1
 
         # Include the line containing offset, if possible.
-        while pos < len(t) and  lpc[-1] < offset:
+        while pos < len(t) and lpc[-1] < offset:
             if t[pos] == '\n':
                 lpc.append(pos)
             pos += 1
@@ -1620,14 +1659,15 @@ class markup_parser (object):
         # Locate the smallest known line index whose end is at or after p.
         def locate(p):
             self._update_linetab(p)
-            lo = 0; hi = len(lpc) - 1
+            lo = 0
+            hi = len(lpc) - 1
             if lpc[hi] < p:
                 return hi
 
             # Invariant: lpc[lo] < p; lpc[hi] >= p
             while lo + 1 < hi:
                 mid = (lo + hi) // 2
-                if   lpc[mid] > p: hi = mid
+                if lpc[mid] > p: hi = mid
                 elif lpc[mid] < p: lo = mid
                 else: return mid - 1
             return hi - 1
@@ -1662,9 +1702,13 @@ class markup_parser (object):
         tw = opts.get('tab_width', self.TAB_WIDTH)
         tt = opts.get('tab_type', 'stop')
         if tt == 'fixed':
-            def advance(p): return p + tw
+
+            def advance(p):
+                return p + tw
         else:
-            def advance(p): return tw * ((p + tw) // tw)
+
+            def advance(p):
+                return tw * ((p + tw) // tw)
 
         colnum = 0
         while cpos > 0:
@@ -1683,9 +1727,13 @@ class markup_parser (object):
         tw = opts.get('tab_width', self.TAB_WIDTH)
         tt = opts.get('tab_type', 'stop')
         if tt == 'fixed':
-            def advance(p): return p + tw
+
+            def advance(p):
+                return p + tw
         else:
-            def advance(p): return tw * ((p + tw) // tw)
+
+            def advance(p):
+                return tw * ((p + tw) // tw)
 
         epos = cpos = 0
         while epos < colnum:
@@ -1706,13 +1754,20 @@ class markup_parser (object):
     # --- Private methods ----------------------------------------------
 
     # Mapping from token types to representation classes.
-    __wmap = {'open':  markup_tag, 'self': markup_tag, 'close': markup_tag,
-              'text':  markup_text,
-              'dir':   markup_directive, 'udir': markup_directive,
-              'com':   markup_comment,   'ucom': markup_comment,
-              'cdata': markup_comment,   'udata': markup_comment,
-              }
-    def make_wrappers(self, start_pos = 0):
+    __wmap = {
+        'open': markup_tag,
+        'self': markup_tag,
+        'close': markup_tag,
+        'text': markup_text,
+        'dir': markup_directive,
+        'udir': markup_directive,
+        'com': markup_comment,
+        'ucom': markup_comment,
+        'cdata': markup_comment,
+        'udata': markup_comment,
+    }
+
+    def make_wrappers(self, start_pos=0):
         # Build a wrapper object for each token; the end user will see
         # these instead of the tuples.
         wraps = [None] * (len(self.objects) - start_pos)
@@ -1751,6 +1806,7 @@ class markup_parser (object):
         assigned partners by default, but any object can be given a partner by
         manual assignment.
         """
+
         # When we find the end of a tag, we preemptively define that tag as the
         # parent of all unclaimed tags inside it, that are either single or
         # properly paired.  This saves an expensive computation later.
@@ -1760,22 +1816,23 @@ class markup_parser (object):
             for p in range(lo, hi):
                 t = self.wrappers[p]
 
-                if (not hasattr(t, '_parent_cache_') and
-                    (t.type not in ('open', 'close') or
-                     (p in matches and lo <= matches[p] <= hi))):
+                if (not hasattr(t, '_parent_cache_')
+                        and (t.type not in ('open', 'close') or
+                             (p in matches and lo <= matches[p] <= hi))):
                     t._parent_cache_ = obj
 
-        queue = [] ; matches = {}
+        queue = []
+        matches = {}
         for pos, obj in enumerate(self.wrappers):
-            if (obj.type == 'open' and
-                obj.name.lower() not in self.SINGULAR_TAGS):
+            if (obj.type == 'open'
+                    and obj.name.lower() not in self.SINGULAR_TAGS):
 
                 # If the new start tag implicitly ends its predecessor, make
                 # a one-way link from the predecessor to this tag.
                 for q in reversed(range(len(queue))):
                     qpos, qobj = queue[q]
-                    if (obj.name.lower() in
-                        self.CLOSED_BY_OPEN.get(qobj.name.lower(), ())):
+                    if (obj.name.lower()
+                            in self.CLOSED_BY_OPEN.get(qobj.name.lower(), ())):
                         matches[qpos] = pos
                         parentify(qpos + 1, pos, qobj)
                         queue.pop(q)
@@ -1797,8 +1854,8 @@ class markup_parser (object):
 
                     # If the ending tag implicitly ends its predecessor, make
                     # a one-way link from the predecessor to this tag.
-                    elif (obj.name.lower() in
-                          self.CLOSED_BY_CLOSE.get(qobj.name.lower(), ())):
+                    elif (obj.name.lower()
+                          in self.CLOSED_BY_CLOSE.get(qobj.name.lower(), ())):
                         matches[qpos] = pos
                         parentify(qpos + 1, pos, qobj)
                         queue.pop(q)
@@ -1825,7 +1882,7 @@ class markup_parser (object):
         assert 0 <= id < len(self.wrappers)
         return self.wrappers[id]
 
-    def set_partner(self, src_id, dst_id, mutual = False):
+    def set_partner(self, src_id, dst_id, mutual=False):
         m = self.matches
         if dst_id is None:
             m.pop(src_id, None)
@@ -1834,58 +1891,54 @@ class markup_parser (object):
             if mutual:
                 m[dst_id] = src_id
 
+
 # }}
 
-# {{ class html_parser 
+# {{ class html_parser
 
-class html_parser (markup_parser):
+
+class html_parser(markup_parser):
     """A specialization of markup_parser that knows some of the tag rules for
     HTML.
     """
-    SINGULAR_TAGS = set((
-        'br', 'embed', 'hr', 'img', 'input', 'link', 'param'))
+    SINGULAR_TAGS = set(('br', 'embed', 'hr', 'img', 'input', 'link', 'param'))
 
     CLOSED_BY_OPEN = {
-        'p':     set(('p',)),
-        'li':    set(('li',)),
-        'dt':    set(('dt', 'dd')),
-        'dd':    set(('dt', 'dd')),
-        'th':    set(('th', 'td', 'tr')),
-        'td':    set(('th', 'td', 'tr')),
-        'tr':    set(('tr',)),
+        'p': set(('p', )),
+        'li': set(('li', )),
+        'dt': set(('dt', 'dd')),
+        'dd': set(('dt', 'dd')),
+        'th': set(('th', 'td', 'tr')),
+        'td': set(('th', 'td', 'tr')),
+        'tr': set(('tr', )),
         'thead': set(('tbody', 'tfoot')),
         'tbody': set(('tbody', 'tfoot')),
-        'head':  set(('body',)),
-        }
+        'head': set(('body', )),
+    }
 
     CLOSED_BY_CLOSE = {
-        'li':    set(('ul', 'ol')),
-        'dt':    set(('dl',)),
-        'dd':    set(('dl',)),
-        'th':    set(('table',)),
-        'td':    set(('table',)),
-        'tr':    set(('table',)),
-        'tbody': set(('table',)),
-        'tfoot': set(('table',)),
-        'body':  set(('html',)),
-        }
+        'li': set(('ul', 'ol')),
+        'dt': set(('dl', )),
+        'dd': set(('dl', )),
+        'th': set(('table', )),
+        'td': set(('table', )),
+        'tr': set(('table', )),
+        'tbody': set(('table', )),
+        'tfoot': set(('table', )),
+        'body': set(('html', )),
+    }
 
     CLOSED_BY_EOF = set(('body', 'html'))
 
     ENTITY_NAME_MAP = dict(markup_parser.ENTITY_NAME_MAP)
-    ENTITY_NAME_MAP.update((k, to_char(v)) for k, v in
-                           html_entities.name2codepoint.items())
+    ENTITY_NAME_MAP.update(
+        (k, to_char(v)) for k, v in html_entities.name2codepoint.items())
+
 
 # }}
 
-__all__ = (
-    'markup_scanner', 'markup_parser',
-
-    'markup_object', 'markup_tag', 'markup_text',
-    'markup_comment', 'markup_directive',
-    'markup_entity', 'markup_attribute',
-
-    'parse_error',
-    'html_parser')
+__all__ = ('markup_scanner', 'markup_parser', 'markup_object', 'markup_tag',
+           'markup_text', 'markup_comment', 'markup_directive',
+           'markup_entity', 'markup_attribute', 'parse_error', 'html_parser')
 
 # Here there be dragons

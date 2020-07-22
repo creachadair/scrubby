@@ -7,9 +7,10 @@
 import scrubby as S
 import unittest, functools
 
-# {{ class test_scanner 
+# {{ class test_scanner
 
-class test_scanner (unittest.TestCase):
+
+class test_scanner(unittest.TestCase):
     """Low-level tests for the markup_scanner class.  Only tests the internal
     methods; higher-level methods should be tested by using the results in a
     markup_parser.
@@ -21,15 +22,16 @@ class test_scanner (unittest.TestCase):
 
     def test_strings(self):
         """Test quoted string tokens."""
-        for tag, src in (('str', '"double-quoted string"'),
-                         ('ustr', '"incomplete string'),
-                         ('str', "'single-quoted string'"),
-                         ('ustr', "'incomplete string"),
-                         ('str', '""'), # empty double-quoted
-                         ('str', "''"), # empty single-quoted
-                         ('ustr', '"\x01'), # incomplete double-quoted
-                         ('ustr', "'\x01"), # incomplete single-quoted
-                         ):
+        for tag, src in (
+            ('str', '"double-quoted string"'),
+            ('ustr', '"incomplete string'),
+            ('str', "'single-quoted string'"),
+            ('ustr', "'incomplete string"),
+            ('str', '""'),  # empty double-quoted
+            ('str', "''"),  # empty single-quoted
+            ('ustr', '"\x01'),  # incomplete double-quoted
+            ('ustr', "'\x01"),  # incomplete single-quoted
+        ):
             s = S.markup_scanner(src)
             self.assertEqual(s.scan_string(0), (tag, 0, len(s.input)))
 
@@ -39,9 +41,9 @@ class test_scanner (unittest.TestCase):
         self.assertEqual(s.scan_unquoted(0), ('unq', 0, len('unquoted')))
 
         s = S.markup_scanner(' empty')
-        self.assertEqual(s.scan_unquoted(0, allow_blank = True), ('unq', 0, 0))
+        self.assertEqual(s.scan_unquoted(0, allow_blank=True), ('unq', 0, 0))
         self.assertRaises(S.parse_error,
-                          lambda: s.scan_unquoted(0, allow_blank = False))
+                          lambda: s.scan_unquoted(0, allow_blank=False))
 
         s = S.markup_scanner('NAME<')
         self.assertEqual(s.scan_name(0), ('name', 0, len('NAME')))
@@ -56,7 +58,7 @@ class test_scanner (unittest.TestCase):
     def test_literal(self):
         """Test consumption of literals."""
         s = S.markup_scanner('$++OK')
-        self.assertEqual(s.scan_literal(1, '++'), ('lit', 1, 1+ len('++')))
+        self.assertEqual(s.scan_literal(1, '++'), ('lit', 1, 1 + len('++')))
         self.assertRaises(S.parse_error, lambda: s.scan_literal(0, 'XXX'))
 
     def test_entity(self):
@@ -84,51 +86,63 @@ class test_scanner (unittest.TestCase):
 
     def test_directives(self):
         """Test CDATA and other directives."""
-        s = S.markup_scanner('<!normal directive>') ; t = len(s.input)
-        self.assertEqual(s.parse_one(0), ('dir', 0, t,
-                                          {'content': (2, t - 1),
-                                           'name': (2, 2 + len('normal'))}))
-        s = S.markup_scanner('<!broken directive<') ; t = len(s.input)
-        self.assertEqual(s.parse_one(0), ('udir', 0, t - 1,
-                                          {'content': (2, t - 1),
-                                           'name': (2, 2 + len('broken'))}))
+        s = S.markup_scanner('<!normal directive>')
+        t = len(s.input)
+        self.assertEqual(s.parse_one(0), ('dir', 0, t, {
+            'content': (2, t - 1),
+            'name': (2, 2 + len('normal'))
+        }))
+        s = S.markup_scanner('<!broken directive<')
+        t = len(s.input)
+        self.assertEqual(s.parse_one(0), ('udir', 0, t - 1, {
+            'content': (2, t - 1),
+            'name': (2, 2 + len('broken'))
+        }))
 
-        s = S.markup_scanner('<![CDATA[a[<]]*>+y<]]>') ; t = len(s.input)
-        self.assertEqual(s.parse_one(0), ('cdata', 0, t,
-                                          {'content': (len('<![CDATA['),
-                                                       t - len(']]>'))}))
-        s = S.markup_scanner('<![CDATA[...') ; t = len(s.input)
-        self.assertEqual(s.parse_one(0), ('udata', 0, t,
-                                          {'content': (len('<![CDATA['), t)}))
+        s = S.markup_scanner('<![CDATA[a[<]]*>+y<]]>')
+        t = len(s.input)
+        self.assertEqual(s.parse_one(0), ('cdata', 0, t, {
+            'content': (len('<![CDATA['), t - len(']]>'))
+        }))
+        s = S.markup_scanner('<![CDATA[...')
+        t = len(s.input)
+        self.assertEqual(s.parse_one(0), ('udata', 0, t, {
+            'content': (len('<![CDATA['), t)
+        }))
 
     def test_attrib(self):
         """Test tag-attribute tokens."""
-        s = S.markup_scanner('novalue/'); nlen = len('novalue')
-        self.assertEqual(s.parse_attrib(0), ('attr', 0, nlen,
-                                             {'name': (0, nlen),
-                                              'value': ('none', nlen, nlen)}))
-        s = S.markup_scanner('name=bare word'); nlen = len('name')
-        self.assertEqual(s.parse_attrib(0), ('attr', 0, len(s.input) - 5,
-                                             {'name': (0, nlen),
-                                              'value': ('unq', 5, 9)}))
+        s = S.markup_scanner('novalue/')
+        nlen = len('novalue')
+        self.assertEqual(s.parse_attrib(0), ('attr', 0, nlen, {
+            'name': (0, nlen),
+            'value': ('none', nlen, nlen)
+        }))
+        s = S.markup_scanner('name=bare word')
+        nlen = len('name')
+        self.assertEqual(s.parse_attrib(0), ('attr', 0, len(s.input) - 5, {
+            'name': (0, nlen),
+            'value': ('unq', 5, 9)
+        }))
         s = S.markup_scanner('name="bare word')
-        self.assertEqual(s.parse_attrib(0), ('attr', 0, len(s.input),
-                                             {'name': (0, nlen),
-                                              'value': ('ustr', 5,
-                                                        len(s.input))}))
+        self.assertEqual(s.parse_attrib(0), ('attr', 0, len(s.input), {
+            'name': (0, nlen),
+            'value': ('ustr', 5, len(s.input))
+        }))
         s = S.markup_scanner(s.input + '"')
-        self.assertEqual(s.parse_attrib(0), ('attr', 0, len(s.input),
-                                             {'name': (0, nlen),
-                                              'value': ('str', 5,
-                                                        len(s.input))}))
+        self.assertEqual(s.parse_attrib(0), ('attr', 0, len(s.input), {
+            'name': (0, nlen),
+            'value': ('str', 5, len(s.input))
+        }))
+
 
 # }}
 
-# {{ class test_parser 
+# {{ class test_parser
 
-class test_parser (unittest.TestCase):
+
+class test_parser(unittest.TestCase):
     """Unit tests for markup_parser."""
-
     def test_directive(self):
         """Test markup directives."""
         s = S.markup_parser('<!DOCTYPE html public>')
@@ -166,13 +180,21 @@ class test_parser (unittest.TestCase):
         s = S.markup_parser('<open1><open2 bare name1=val name2="foo">')
         self.assertEqual(len(s), 3)
         self.assertTagShape(s[0], 'open', 'open1')
-        self.assertTagShape(s[1], 'open', 'open2',
-                            bare = '', name1 = 'val', name2 = 'foo')
+        self.assertTagShape(s[1],
+                            'open',
+                            'open2',
+                            bare='',
+                            name1='val',
+                            name2='foo')
 
         s = S.markup_parser("<self foo=bar baz='quux crunch' zot/></endtag>")
         self.assertEqual(len(s), 3)
-        self.assertTagShape(s[0], 'self', 'self',
-                            foo = 'bar', baz = 'quux crunch', zot = '')
+        self.assertTagShape(s[0],
+                            'self',
+                            'self',
+                            foo='bar',
+                            baz='quux crunch',
+                            zot='')
         self.assertTagShape(s[1], 'close', 'endtag')
 
     def test_basic_nesting(self):
@@ -189,7 +211,7 @@ class test_parser (unittest.TestCase):
         self.assertChildOf(s[7], s[0])  # </B> is a child of </A>
         self.assertChildOf(s[8], s[0])  # </C> is a child of <A>
         self.assertChildOf(s[9], s[0])  # z    is a child of <A>
-        self.assertChildOf(s[10], None) # </A> is at the top level
+        self.assertChildOf(s[10], None)  # </A> is at the top level
 
         # Partnership tests
         self.assertPartners(s[0], s[10])
@@ -206,26 +228,26 @@ class test_parser (unittest.TestCase):
 
     def test_custom_nesting(self):
         """Test some simple customized nesting rules."""
-        class TP (S.markup_parser):
-            CLOSED_BY_CLOSE = {'c': set(('b',))}
-            CLOSED_BY_OPEN  = {'c': set(('c',))}
+        class TP(S.markup_parser):
+            CLOSED_BY_CLOSE = {'c': set(('b', ))}
+            CLOSED_BY_OPEN = {'c': set(('c', ))}
 
         #       0  1  2  3  4 5  6 7  8 9   10 11
         s = TP('<A>aaa<B><C>c1<C>c2<C>c3</B>bbb</A>')
 
-        self.assertPartners(s[0], s[11]) # <A> ~ </A>
+        self.assertPartners(s[0], s[11])  # <A> ~ </A>
         self.assertPartners(s[2], s[9])  # <B> ~ </B>
-        self.assertPartner(s[3], s[5])   # <C> ~ <C>
-        self.assertPartner(s[5], s[7])   # ditto
-        self.assertPartner(s[7], s[9])   # ditto
+        self.assertPartner(s[3], s[5])  # <C> ~ <C>
+        self.assertPartner(s[5], s[7])  # ditto
+        self.assertPartner(s[7], s[9])  # ditto
 
-        self.assertChildOf(s[1], s[0])   # A contains aaa
-        self.assertChildOf(s[2], s[0])   # A contains B
-        self.assertChildOf(s[3], s[2])   # B contains C's
+        self.assertChildOf(s[1], s[0])  # A contains aaa
+        self.assertChildOf(s[2], s[0])  # A contains B
+        self.assertChildOf(s[3], s[2])  # B contains C's
         self.assertChildOf(s[5], s[2])
         self.assertChildOf(s[7], s[2])
 
-        self.assertChildOf(s[4], s[3])   # C's contain their c's
+        self.assertChildOf(s[4], s[3])  # C's contain their c's
         self.assertChildOf(s[6], s[5])
         self.assertChildOf(s[8], s[7])
 
@@ -237,39 +259,39 @@ class test_parser (unittest.TestCase):
                             '<atag x=y><tag><self/>more&amp;</tag>')
 
         # Check that we don't find things we're not supposed to
-        self.assertEqual(list(s.find(name = 'none')), [])
-        self.assertRaises(KeyError, lambda: s.first(name = 'none'))
-        self.assertRaises(KeyError, lambda: s.first(
-            name = 'DOC', case_matters = True))
+        self.assertEqual(list(s.find(name='none')), [])
+        self.assertRaises(KeyError, lambda: s.first(name='none'))
+        self.assertRaises(KeyError,
+                          lambda: s.first(name='DOC', case_matters=True))
 
         # Make sure we find the things we are supposed to
-        self.assertEqual(s.first(type = 'com').source, '<!-- comment -->')
-        self.assertEqual(s.last(name = 'tag').partner.source, '<tag>')
-        self.assertEqual(list(t.source for t in s.find(type = 'text')),
+        self.assertEqual(s.first(type='com').source, '<!-- comment -->')
+        self.assertEqual(s.last(name='tag').partner.source, '<tag>')
+        self.assertEqual(list(t.source for t in s.find(type='text')),
                          ['text', 'more&amp;'])
-        self.assertEqual(s.first(value = 'more&').obj_id, 7)
-        self.assertEqual(s.first(type = 'self').source , '<self/>')
-        self.assertEqual(s.first(type = 'dir').source, '<?dir?>')
+        self.assertEqual(s.first(value='more&').obj_id, 7)
+        self.assertEqual(s.first(type='self').source, '<self/>')
+        self.assertEqual(s.first(type='dir').source, '<?dir?>')
 
         # Check that attribute matching works
-        self.assertRaises(KeyError, lambda: s.first(
-            name = 'atag', attr = ('x', False)))
-        self.assertRaises(TypeError, lambda: s.first(attr = False))
-        self.assertEqual(s.first(name = 'atag').keys(), ['x'])
-        self.assertEqual(s.first(attr = ('x', True))['x'].value, 'y')
+        self.assertRaises(KeyError,
+                          lambda: s.first(name='atag', attr=('x', False)))
+        self.assertRaises(TypeError, lambda: s.first(attr=False))
+        self.assertEqual(s.first(name='atag').keys(), ['x'])
+        self.assertEqual(s.first(attr=('x', True))['x'].value, 'y')
 
     def test_query_mapping(self):
         """Test mapping functions over query results."""
         s = S.markup_parser('<a><b/>foobar<c></a></c>')
 
-        self.assertEqual(s.first(type = 'text', map = 'source'), 'foobar')
-        self.assertEqual(s.first(type = 'self', map = 'start'), 3)
-        self.assertEqual(s.first(type = 'close', map = ('name', 'obj_id')),
+        self.assertEqual(s.first(type='text', map='source'), 'foobar')
+        self.assertEqual(s.first(type='self', map='start'), 3)
+        self.assertEqual(s.first(type='close', map=('name', 'obj_id')),
                          ('a', 4))
-        self.assertEqual(list(s.find(map = len)),
-                         [3, 4, 6, 3, 4, 4, 0]) # includes eof marker
-        self.assertEqual(list(s.find(map = lambda t: t.linepos[1])),
-                         [0, 3, 7, 13, 16, 20, 24]) #includes eof marker
+        self.assertEqual(list(s.find(map=len)),
+                         [3, 4, 6, 3, 4, 4, 0])  # includes eof marker
+        self.assertEqual(list(s.find(map=lambda t: t.linepos[1])),
+                         [0, 3, 7, 13, 16, 20, 24])  #includes eof marker
 
     def test_query_candidates(self):
         """Test queries that stipulate a particular candidate set."""
@@ -277,26 +299,24 @@ class test_parser (unittest.TestCase):
         s = S.markup_parser('<T>a span of text<U/>another span</T>')
 
         # If no candidate set is given, search the entire set.
-        self.assertEqual(s.first(type = 'text').obj_id, 1)
+        self.assertEqual(s.first(type='text').obj_id, 1)
 
         # Search on an object queries the contents of the object.
-        self.assertEqual(s[0].first(type = 'text').obj_id, 1)
+        self.assertEqual(s[0].first(type='text').obj_id, 1)
 
         # Search with an explicit range restricts the span.
-        self.assertEqual(s.first(type = 'text', search_after = s[2]).obj_id, 3)
+        self.assertEqual(s.first(type='text', search_after=s[2]).obj_id, 3)
 
         # Multiple restrictions are allowed.
         self.assertEqual(
-            s.first(search_after = s[1], search_before = s[3]).obj_id, 2)
+            s.first(search_after=s[1], search_before=s[3]).obj_id, 2)
         self.assertEqual(
-            s.first(search_after = s[2], search_inside = s[0]).obj_id, 3)
-        self.assertEqual(
-            s[0].first(search_after = s[2], type = 'text').obj_id, 3)
-        self.assertEqual(
-            s[0].first(search_before = s[2], type = 'text').obj_id, 1)
+            s.first(search_after=s[2], search_inside=s[0]).obj_id, 3)
+        self.assertEqual(s[0].first(search_after=s[2], type='text').obj_id, 3)
+        self.assertEqual(s[0].first(search_before=s[2], type='text').obj_id, 1)
 
         # Regression: Searching inside a text field doesn't search everything.
-        self.assertRaises(KeyError, lambda: s.first(search_inside = s[1]))
+        self.assertRaises(KeyError, lambda: s.first(search_inside=s[1]))
         self.assertRaises(KeyError, lambda: s[1].first())
 
     def test_line_numbers(self):
@@ -313,7 +333,7 @@ class test_parser (unittest.TestCase):
         self.assertEqual(s.get_line(3), 'line 3')
         self.assertRaises(IndexError, lambda: s.get_line(4))
 
-        t = s.first(type = 'text')
+        t = s.first(type='text')
         self.assertEqual(t.source, '\nline 2\nline 3')
         self.assertEqual(t.linepos, (1, 12))
         self.assertEqual(s.locate(t.start + 1), t)
@@ -328,12 +348,12 @@ class test_parser (unittest.TestCase):
     def test_white_filter(self):
         """Test whitespace filtering."""
         s = S.markup_parser('  <t0>  <t1/> t2 <t3 num=3> ',
-                            skip_white_text = True)
+                            skip_white_text=True)
         self.assertEqual(len(s), 5)
         self.assertTagShape(s[0], 'open', 't0')
         self.assertTagShape(s[1], 'self', 't1')
-        self.assertObjectShape(s[2], 'text', source = ' t2 ')
-        self.assertTagShape(s[3], 'open', 't3', num = '3')
+        self.assertObjectShape(s[2], 'text', source=' t2 ')
+        self.assertTagShape(s[3], 'open', 't3', num='3')
         self.assertObjectShape(s[4], 'eof')
 
     def test_positions(self):
@@ -350,31 +370,31 @@ class test_parser (unittest.TestCase):
         self.assertEqual(s[2].linecol, (2, 8))
 
         # Conversion of line/offset and line/column into input offsets.
-        self.assertEqual(s.get_offset(1, 0), 0)   # beginning
+        self.assertEqual(s.get_offset(1, 0), 0)  # beginning
         self.assertEqual(s.get_offset(2, 9), 13)  # at d
-        self.assertEqual(s.get_offset(2, 0), 4)   # start of <b>
-        self.assertEqual(s.get_column_offset(1, 0), 0)   # beginning
-        self.assertEqual(s.get_column_offset(2, 19), 13) # at d
-        self.assertEqual(s.get_column_offset(2, 8), 5)   # start of <b>
+        self.assertEqual(s.get_offset(2, 0), 4)  # start of <b>
+        self.assertEqual(s.get_column_offset(1, 0), 0)  # beginning
+        self.assertEqual(s.get_column_offset(2, 19), 13)  # at d
+        self.assertEqual(s.get_column_offset(2, 8), 5)  # start of <b>
 
     def test_entities(self):
         """Test entity substitution."""
-        s = S.markup_parser('a&lt;b&gt;c&quot;<x>' # 0 1
-                            '--&testName;--<x>'    # 2 3
-                            '--&NoneSuch;--<x>'    # 4 5
-                            '&#32;&&&#9;')         # 6 <eof>
+        s = S.markup_parser('a&lt;b&gt;c&quot;<x>'  # 0 1
+                            '--&testName;--<x>'  # 2 3
+                            '--&NoneSuch;--<x>'  # 4 5
+                            '&#32;&&&#9;')  # 6 <eof>
         self.assertEqual(len(s), 8)
 
         # Check default entities
-        self.assertObjectShape(s[0], 'text', value = 'a<b>c"')
+        self.assertObjectShape(s[0], 'text', value='a<b>c"')
 
         # Check custom entities
         s.ENTITY_NAME_MAP['testName'] = '[ok]'
-        self.assertObjectShape(s[2], 'text', value = '--[ok]--')
-        self.assertObjectShape(s[4], 'text', value = '--&NoneSuch;--')
+        self.assertObjectShape(s[2], 'text', value='--[ok]--')
+        self.assertObjectShape(s[4], 'text', value='--&NoneSuch;--')
 
         # Check numeric entities
-        self.assertObjectShape(s[6], 'text', value = ' &&\t')
+        self.assertObjectShape(s[6], 'text', value=' &&\t')
 
     def assertChildOf(self, child, parent):
         self.assertEqual(child.parent, parent)
@@ -407,13 +427,14 @@ class test_parser (unittest.TestCase):
         elif kvs:
             self.fail("expected attributes, but there are none")
 
+
 # }}
 
-# {{ class test_html 
+# {{ class test_html
 
-class test_html (test_parser):
+
+class test_html(test_parser):
     """Unit tests for html_parser."""
-
     def test_html_nesting(self):
         """Test HTML nesting rules."""
         s = S.html_parser('<html><head> a <body> b </html>')
@@ -423,8 +444,8 @@ class test_html (test_parser):
         self.assertChildOf(s[5], None)
 
         self.assertPartners(s[0], s[5])
-        self.assertPartner(s[1], s[3]) # <head> closed by <body>
-        self.assertPartner(s[3], s[5]) # <body> closed by </html>
+        self.assertPartner(s[1], s[3])  # <head> closed by <body>
+        self.assertPartner(s[3], s[5])  # <body> closed by </html>
 
         self.assertEqual(s[0].children, [s[1], s[3]])
         self.assertEqual(s[1].children, [s[2]])
@@ -436,7 +457,7 @@ class test_html (test_parser):
         self.assertEqual(s[2].path, [s[0], s[1], s[2]])
 
         s = S.html_parser('<html>...')
-        self.assertPartner(s[0], s[2]) # <html> closed by EOF
+        self.assertPartner(s[0], s[2])  # <html> closed by EOF
 
         # Table nesting rules.
         # Test table format
@@ -453,6 +474,7 @@ class test_html (test_parser):
         self.assertChildOf(s[10], s[9])
 
         # }}
+
 
 if __name__ == "__main__":
     unittest.main()
