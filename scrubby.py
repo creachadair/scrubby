@@ -38,7 +38,7 @@
 ## p[4]    ==> #<markup_tag type='close' name='html' 40..47>
 ## p[5]    ==> #<markup_object type='eof' | 47..47>
 
-__version__ = "1.039"
+__version__ = "1.40.0"
 
 import collections, functools, re, sys
 
