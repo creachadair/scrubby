@@ -15,6 +15,7 @@ class test_scanner(unittest.TestCase):
     methods; higher-level methods should be tested by using the results in a
     markup_parser.
     """
+
     def test_empty_input(self):
         """Test correct scan of empty input."""
         ts = list(S.markup_scanner('').scan())
@@ -143,6 +144,7 @@ class test_scanner(unittest.TestCase):
 
 class test_parser(unittest.TestCase):
     """Unit tests for markup_parser."""
+
     def test_directive(self):
         """Test markup directives."""
         s = S.markup_parser('<!DOCTYPE html public>')
@@ -228,6 +230,7 @@ class test_parser(unittest.TestCase):
 
     def test_custom_nesting(self):
         """Test some simple customized nesting rules."""
+
         class TP(S.markup_parser):
             CLOSED_BY_CLOSE = {'c': set(('b', ))}
             CLOSED_BY_OPEN = {'c': set(('c', ))}
@@ -435,6 +438,7 @@ class test_parser(unittest.TestCase):
 
 class test_html(test_parser):
     """Unit tests for html_parser."""
+
     def test_html_nesting(self):
         """Test HTML nesting rules."""
         s = S.html_parser('<html><head> a <body> b </html>')

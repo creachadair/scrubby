@@ -18,12 +18,13 @@ except ImportError:
 def usage(opts):
     print("Usage: scrub.py [options] <url>", file=sys.stderr)
     if opts:
-        print("\nOptions:\n"
-              "  -e/--encoding <enc>  : specify input encoding.\n"
-              "  -h/--html            : treat input as HTML.\n"
-              "  -s/--skipwhite       : skip whitespace text runs.\n"
-              "  --help               : print this help message.\n",
-              file=sys.stdout)
+        print(
+            "\nOptions:\n"
+            "  -e/--encoding <enc>  : specify input encoding.\n"
+            "  -h/--html            : treat input as HTML.\n"
+            "  -s/--skipwhite       : skip whitespace text runs.\n"
+            "  --help               : print this help message.\n",
+            file=sys.stdout)
         return 0
     else:
         print("  [use --help for a summary of options]", file=sys.stderr)

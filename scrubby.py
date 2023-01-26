@@ -42,31 +42,12 @@ __version__ = "1.039"
 
 import collections, functools, re, sys
 
-# {{ Compatibility definitions
 
-if sys.version_info[0] < 3:
-
-    def is_string(obj):
-        return isinstance(obj, basestring)
-
-    to_char = unichr
-    import htmlentitydefs as html_entities
-else:
-
-    def is_string(obj):
-        return isinstance(obj, str)
-
-    to_char = chr
-    import html.entities as html_entities
+def is_string(obj):
+    return isinstance(obj, str)
 
 
-def is_callable(obj):
-    return isinstance(obj, collections.Callable)
-
-
-# }}
-
-# {{ Exception classes
+import html.entities as html_entities
 
 
 class parse_error(Exception):
@@ -77,17 +58,13 @@ class parse_failed(parse_error):
     pass
 
 
-# }}
-
-# {{ @bounded(meth)
-
-
 def bounded(meth):
     """Convert a scanner method taking a starting position and
     returning a tuple of (tag, endpos), so that the resulting method
     returns (tag, startpos, endpos).  Abstracts the common bookkeeping
     for several of the methods of markup_scanner.
     """
+
     def wrapper(self, start, *args, **kw):
         res = meth(self, start, *args, **kw)
         if res is None:
@@ -95,11 +72,6 @@ def bounded(meth):
         return res[0], start, res[1]
 
     return functools.update_wrapper(wrapper, meth)
-
-
-# }}
-
-# {{ @cached(meth)
 
 
 def cached(meth):
@@ -114,16 +86,12 @@ def cached(meth):
     return functools.update_wrapper(wrapper, meth)
 
 
-# }}
-
-# {{ @unescape(meth)
-
-
 def unescape(meth):
     """Wrap a method yielding a string that may contain escaped
     entities (e.g., &ldquo;) so that the escaping is removed from the
     string.
     """
+
     def wrapper(self, *args, **kw):
         value = meth(self, *args, **kw)
         result = replace_entities(self.parser.ENTITY_NAME_MAP, value)
@@ -132,18 +100,14 @@ def unescape(meth):
     return functools.update_wrapper(wrapper, meth)
 
 
-# }}
-
-# {{ replace_entities(emap, value)
-
-
 def replace_entities(emap, value):
+
     def rep1(m):
         key = m.group('key')
         val = m.group(0)
         if key.startswith('#'):
             try:
-                val = to_char(int(key[1:]))
+                val = chr(key[1:])
             except ValueError:
                 pass
         else:
@@ -151,11 +115,6 @@ def replace_entities(emap, value):
         return val
 
     return re.sub(r'&(?P<key>#?\w+);', rep1, value)
-
-
-# }}
-
-# {{ class markup_scanner
 
 
 class markup_scanner(object):
@@ -203,6 +162,7 @@ class markup_scanner(object):
     comment value is "terminated" if its end marker occurs before the
     end of input; otherwise it is unterminated.
     """
+
     def __init__(self, src):
         """Create a new scanner using the string src as input."""
         if not is_string(src):
@@ -464,11 +424,6 @@ class markup_scanner(object):
         return 'text', p, c, self.find_entities(p, c)
 
 
-# }}
-
-# {{ class named_object
-
-
 class named_object(object):
     """A mixin for objects with names that adds .name, .name_start, and
     .name_end properties.
@@ -477,6 +432,7 @@ class named_object(object):
     .name_start -- start position of the name in the input.
     .name_end   -- end position of the name in the input.
     """
+
     def __reprtag__(self):
         return 'name=%r' % self.name
 
@@ -492,11 +448,6 @@ class named_object(object):
     @property
     def name_end(self):
         return self.get_object_data()['name'][1]
-
-
-# }}
-
-# {{ class markup_object
 
 
 class markup_object(object):
@@ -547,6 +498,7 @@ class markup_object(object):
     line and column numbers.  Column numbers are affected by the parser's tab
     width and line/column number settings.  See markup_parser for details.
     """
+
     def __init__(self, parser, id):
         self.parser = parser
         self.obj_id = id
@@ -799,11 +751,6 @@ class markup_object(object):
         return obj[3]
 
 
-# }}
-
-# {{ class markup_comment
-
-
 class markup_comment(markup_object):
     """Represents an SGML or XML style comment or markup directive.
 
@@ -812,6 +759,7 @@ class markup_comment(markup_object):
     .inner_start  -- the start position of innersource.
     .inner_end    -- the end position of innersource.
     """
+
     @property
     def innersource(self):
         start, end = self.get_object_data()['content']
@@ -826,18 +774,8 @@ class markup_comment(markup_object):
         return self.get_object_data()['content'][1]
 
 
-# }}
-
-# {{ class markup_directive
-
-
 class markup_directive(named_object, markup_comment):
     """Represents an SGML or XML style processing directive."""
-
-
-# }}
-
-# {{ class markup_tag
 
 
 class markup_tag(named_object, markup_object):
@@ -850,6 +788,7 @@ class markup_tag(named_object, markup_object):
     Attributes may also be accessed as atag['name'] as syntactic sugar for
     atag.getattr(name).
     """
+
     def __getitem__(self, key):
         return self.getattr(key)
 
@@ -911,11 +850,6 @@ class markup_tag(named_object, markup_object):
             raise
 
 
-# }}
-
-# {{ class markup_text
-
-
 class markup_text(markup_object):
     """Defines a run of text found in the markup.
 
@@ -926,6 +860,7 @@ class markup_text(markup_object):
     A text object supports indexing and having its length taken as if it were a
     string; these operations delegate to the .source property.
     """
+
     @property
     @cached
     def entities(self):
@@ -945,11 +880,6 @@ class markup_text(markup_object):
         return self.source[itm]
 
 
-# }}
-
-# {{ class markup_datum
-
-
 class markup_datum(markup_object):
     """Base class for entities, attributes, and other data that hang
     from other markup objects.
@@ -957,6 +887,7 @@ class markup_datum(markup_object):
     Key attributes (in addition to those of markup_object):
     .parent   -- the markup object that owns this datum (may be None).
     """
+
     def __repr__(self):
         return '#<%s tag=%d %s %d..%d>' % (type(self).__name__, self.obj_id,
                                            self.__reprtag__(), self.start,
@@ -976,11 +907,6 @@ class markup_datum(markup_object):
         return data[self.obj_index]
 
 
-# }}
-
-# {{ class markup_entity
-
-
 class markup_entity(markup_datum):
     """Represents an escaped entity.
 
@@ -990,6 +916,7 @@ class markup_entity(markup_datum):
     Note that if the entity could not be decoded, its value will be equivalent
     to its source.
     """
+
     @property
     def start(self):
         kind, u, v = self.get_item_data()
@@ -1016,11 +943,6 @@ class markup_entity(markup_datum):
         return self.parent.entities
 
 
-# }}
-
-# {{ class markup_attribute
-
-
 class markup_attribute(markup_datum):
     """Represents an attribute defined on a start tag.
 
@@ -1038,6 +960,7 @@ class markup_attribute(markup_datum):
     usually be the same as .start, and .value_end will usually be the same as
     .end, modulo the removal of quotation marks.
     """
+
     def __reprtag__(self):
         return 'name=%r' % self.name
 
@@ -1107,11 +1030,6 @@ class markup_attribute(markup_datum):
     @property
     def siblings(self):
         return self.parent.attributes
-
-
-# }}
-
-# {{ class markup_parser
 
 
 class markup_parser(object):
@@ -1288,7 +1206,7 @@ class markup_parser(object):
         reverse = opts.get('reverse', False)
         mapper = opts.get('map', lambda t: t)
 
-        if is_callable(mapper):
+        if callable(mapper):
             do_map = mapper
         elif is_string(mapper):
 
@@ -1307,6 +1225,7 @@ class markup_parser(object):
             raise TypeError("Invalid mapping rule: %r" % mapper)
 
         def gsense(f):
+
             def w(value, exp):
                 if negate: return not f(value, exp)
                 else: return f(value, exp)
@@ -1314,6 +1233,7 @@ class markup_parser(object):
             return w
 
         def tsense(f):
+
             def w(candidate, test_name, test_value):
                 if test_name.startswith('not_'):
                     return not f(candidate, test_name[4:], test_value)
@@ -1329,9 +1249,9 @@ class markup_parser(object):
                     return value == exp
                 else:
                     return value.lower() == exp.lower()
-            elif hasattr(exp, 'search') and is_callable(exp.search):
+            elif hasattr(exp, 'search') and callable(exp.search):
                 return exp.search(value)
-            elif is_callable(exp):
+            elif callable(exp):
                 return bool(exp(value))
             elif exp in (None, True):
                 return True  # the attribute exists
@@ -1386,7 +1306,7 @@ class markup_parser(object):
         def t_associate(candidate, test_name, test_value):
             return (hasattr(candidate, test_name)
                     and test_value(getattr(candidate, test_name))
-                    if is_callable(test_value) else
+                    if callable(test_value) else
                     getattr(candidate, test_name) is test_value)
 
         @tsense
@@ -1892,11 +1812,6 @@ class markup_parser(object):
                 m[dst_id] = src_id
 
 
-# }}
-
-# {{ class html_parser
-
-
 class html_parser(markup_parser):
     """A specialization of markup_parser that knows some of the tag rules for
     HTML.
@@ -1932,10 +1847,8 @@ class html_parser(markup_parser):
 
     ENTITY_NAME_MAP = dict(markup_parser.ENTITY_NAME_MAP)
     ENTITY_NAME_MAP.update(
-        (k, to_char(v)) for k, v in html_entities.name2codepoint.items())
+        (k, chr(v)) for k, v in html_entities.name2codepoint.items())
 
-
-# }}
 
 __all__ = ('markup_scanner', 'markup_parser', 'markup_object', 'markup_tag',
            'markup_text', 'markup_comment', 'markup_directive',

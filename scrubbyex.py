@@ -13,13 +13,7 @@ from __future__ import print_function
 import scrubby
 import os, re, sys
 
-# For compatibility with Python 2 and 3.
-try:
-    import urllib.request as urllib
-except ImportError:
-    import urllib
-
-# {{ Utility functions
+import urllib.request as urllib
 
 # These are some utility functions that are used by the examples further along
 # in this file.
@@ -36,6 +30,7 @@ def load_url(url):
 
 def untabify(text, width):
     """Replace tabs with spaces in text."""
+
     def next_stop(p):
         return width * ((p + width) // width)
 
@@ -76,8 +71,6 @@ def format_snippet(obj, prefix='', span=False, **opts):
     mark = prefix + lead
     return (prefix + line + '\n' + mark)
 
-
-# }}
 
 # This variable is global so that you can inspect the guts of the parser after
 # one of the demo functions has set it up.
@@ -133,12 +126,6 @@ def report_missing_alts(url):
     print("<done>")
 
 
-# }}
-
-# {{ report_unclosed_paras(url)
-
-
-#<>
 def report_unclosed_paras(url):
     """<> Generate a report of any <p> tags that are not balanced by a
     corresponding </p> in an HTML document.
@@ -196,11 +183,6 @@ def report_unclosed_paras(url):
     print("<done>")
 
 
-# }}
-
-# {{ report_explicit_styles(url)
-
-
 def report_explicit_styles(url):
     """<> Generate a report of any non-SPAN tags that have a non-empty explicit
     style attribute.  This can catch things which probably should have been put
@@ -242,11 +224,6 @@ def report_explicit_styles(url):
                      p['style'], prefix='| ', span=True, width=80, tabsize=8)))
 
     print("<done>")
-
-
-# }}
-
-# {{ fetch_latest_comic()
 
 
 def fetch_latest_comic():
@@ -302,7 +279,5 @@ def fetch_latest_comic():
 
     print("<done>")
 
-
-# }}
 
 # Here there be dragons.
