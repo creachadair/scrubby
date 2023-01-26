@@ -107,7 +107,7 @@ def replace_entities(emap, value):
         val = m.group(0)
         if key.startswith('#'):
             try:
-                val = chr(key[1:])
+                val = chr(int(key[1:]))
             except ValueError:
                 pass
         else:
